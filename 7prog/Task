@@ -1,0 +1,18 @@
+Write simple and elegant program
+It borns n children. Childrens are very dump: reads from file and writes to
+pipe.
+    parent
+
+    file -> 1c -> pipe -> 2c -> 3c -> pipe -> ... -> lc -> pipe -> parent
+    -> stdout
+
+Parent must AT THE SAME TIME READ!!!
+Death of child and parent must be detected! Data mustn't be boiled.
+The size of buffers must be chosen so:
+
+3^n * 4KB
+3^(n-1) * 4KB
+3^(n-2) * 4KB
+3^(n-3) * 4KB
+
+Writes are nonblock in parent and block in children.

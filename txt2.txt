@@ -1,0 +1,63 @@
+There're
+1.c
+1.h
+2.c
+
+gcc -o a.out 1.c 2.c
+
+There're 4 stadies:
+1)Preprocessing-->Source C code (text expandings)
+2)Compilation-->Macroassembler code
+3)Assembler-->Object file(binary file you cannot execute because
+    some vars and some jumps don't have right adresses)
+4)Linker(Russian:Komponovshchik)-->Binary executable file
+
+gcc -c -o 1.o 1.c
+gcc -c -o 2.o 2.c
+gcc -o a.out 2.o 1.o
+//Order is important
+This is better because if we'd changed 1.c, we must execute just 2/3 of work.
+So for big modules we will get a lot of profit.
+
+This is gmake in GNU
+nmake in Microsoft
+
+They both makes this: we have a dependence, because we have a goal and
+prerecvizites. And we have an rules goal<-->prerecvizites. They're complex
+enough.
+
+all: a.out
+
+a.out: 1.o 2.o
+<TAB>gcc -o a.out 1.o 2.o
+
+1.o: 1.c
+<TAB>gcc -c -o 1.o 1.c
+<TAB>#May be something else
+<TAB>#And more...
+
+2.o: 2.c
+<TAB>gcc -c -o 2.o 2.c
+
+1.o 2.o: 1.h
+
+clean:
+<TAB>rm -rf *.o a.out
+
+We can declare goals to execute ALWAYS!!!
+Nothing is harcored!!!
+.PHONY: all clean
+
+We can use
+a.out: 1.o 2.o
+<TAB>gcc -o $@ $^
+
+//And you have a right not to write this rule
+%.o: %.c //%==[1,2]
+<TAB>$(CC) $(CFLAGS) -c -o $@ $<
+
+
+-MD flag will tell you about *.h dependencies
+-include *.d //- sign to ignore errors on the first time
+gmake/make -p
+-g16 //cores*threads*2

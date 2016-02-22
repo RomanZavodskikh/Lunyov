@@ -1,0 +1,4 @@
+Write 2 processes that are not child-parent. 1 process reads file, 2nd prints.
+Data between processes can be sent by shared memory and semaphores. Only.
+If program is killed by 9. Next program must might be executed.
+File mustn't be boiled.

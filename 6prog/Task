@@ -1,0 +1,6 @@
+Program born process.
+Daughter reads file and sends to parent.
+Send bit-by-bit.
+Extended thing no to use.
+We must handle killing of parent and daughter.
+We use SIGUSR1(2).

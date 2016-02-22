@@ -1,0 +1,5 @@
+(Start program) Program born child process, child process open file, read it and writes to pipe.
+Parent reads from pipe and write to stdout.
+
+(Plus program) Two programs in one executable file: in one terminal with filename and in other terminal without filename. The other program will print file.
+* We should predict fileboiling during piping. We can't use locks and signals.

@@ -1,0 +1,256 @@
+Advanced programming in UNIX environment
+gdb ./a.out
+gbd -p <>
+strace
+ltrace
+QEMU
+Linux Kernel
+
+
+
+pid = fork ();
+[] - выполнится два раза (в ребёнке и в родителе)
+Память дублируется, но копируется только при записи
+pid==0 в дочернем, pid=идентификатору порождённого процесса
+Не может быть двух процессов с одним идентификатором
+Есть getpid(); Есть getppid();
+
+Базовая программка:
+pid = fork();
+if (pid == 0)
+    printf("Child\n");
+else if (pid > 0)
+    printf("Parent\n");
+else
+    printf("Error\n");
+wait (&status);
+         ^-----------------------exit(-1);
+
+Есть 6 execов:
+execl
+execlp
+execle
+execl(argv[0], argv[0], argv[1], ..., NULL);
+
+execv
+execv (argv[0], argv
+execvp
+execvpe --- оперируют с массивом аргуметом командной строки. Последний - NULL
+
+execl("/bin/ls", "/bin/ls", NULL);
+printf("Error"); //we can not to check return code. On success will never execute.
+
+Наследуются все открытые файловые дескрипторы
+open(name, O_RDWR|O_CLOEXEC); //Об строчке выше надо позаботиться
+
+Обычно пишут
+pid = fork();
+if (pid == 0)
+{
+    exec();
+    exit(-1);
+}
+
+____________________________________________________________________________________________________
+What is pipe? It's a buffer and we have two in
+fd[1] for write
+fd[0] for read
+we create with pipe(int fd[2]) syscall
+
+int fds[2];
+pipe (fds);
+
+pipe exists while there's a file descriptor that refers to this pipe
+
+pipe (int fd[2]);
+fork();
+//there are 4 file descriptors
+
+If we close the read end of pipe then any trying to write to this pipe will lead to an error (EPIPE) (there will be a signal) and the process will die.
+If we close the write end of pipe (there are no one descriptor opened to write) then at begin we will read data from buffer and then (when buffers ends) the read will return 0. It's the only case when read returns 0.
+We can only chat parent-child with pipes.
+
+find . -name \*.c | xargs grep "a = "
+
+If we don't have parent and child we use named pipes
+mkfifo(name, 0666);
+open (name, O_RDONLY);
+//open will wait when other process will open writing of file
+or open (name, 0_RDONLY | O_NONBLOCK); //it will be asked
+
+|fd=3 <----------------->       fd=5|
+
+Pipes are better files:
+-There are not disk writes
+_________________________________________________________________________________________________
+We work with open, close, read, write;
+Operation of opening file is very-very complicated because we have a filename (unique object in namespace).
+For example, if we open /usr/bin/bash: we
+    open /
+    find usr
+    oper usr
+    find bin
+    open bin
+    find bash
+    open bash
+=====> This operation is expensive and non-atomaric
+unlink === delete, rename === rename
+The operation on renaming MUST BE ATOMARIC (THIS IS PRINCIPIAL FEATURE OF RENAME)
+rmdir === delete directory (empty one)
+Read and write operations are very expensive:
+We need to |read| and |write| to copy. So we have a splice (!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!) syscall
+There is a syscall to broaden file without write: fallocate
+Truncate is to decrease size of file (or to make hole file)
+fallocate with PUNCH_HOLE lets you make hole in the middle of the file
+//EVERYTHING OF this is useful for virtual machines
+
+To the task struct of process is linked table of opened files (file descriptors). We have an index in file descriptor table. FD keeps in itself a pointer on dentry object. Dentry strcut has a link on inode. The inode structure is UNIQUE for file.
+stat syscall tells a lot of info about file
+fcntl can change right flags
+
+Every process has current directory. We can change it with getcwd and chdir.
+We have special symbols: . - current directory, .. - previous directory
+symlink creates symbolic link
+
+Who has a right to write, read and execute files???
+This info is contained in inode: every file has 9 bites to manipulate rights: rwx (about user) rwx (about group) rwx (about everybody else) - and 2 number - UserID and GroupID
+/etc/passwd, /etc/groups
+When system opens files, it checks all of 9 bites. If UID == UID of file, then system checks 3 first bites. If GID == GID of file, then 4-6 bites and etc.
+There's a flock (but we can't use in 3prog)
+_____________________________________________________________________________________________________
+Message queue is object. It is created by 
+int msgget(key_t key, int flags)
+           ^it is magic number
+IPC_PRIVATE - always will be new queue
+There's a function ftok to generate keys.
+ftok(filename, proj_id)
+IPC_CREAT, IPC_EXCL, <AR> == <Access right>
+We must delete MQ with msgctl(id, IPC_RMID, NULL)
+msgrcv && msgsnd
+int msgsnd(msgid, const void* msg, size_t size, int flags /*i.e. IPC_NOWAIT*/)
+
+struct my_msg
+{
+    long type;
+    .
+    .
+    .
+    .
+};
+In size must be [ sizeof(struct my_msg) - sizeof(long) ];
+type must be > 0;
+int msgrcv(msgid, const void* buffer, size_t size, type, int flags)
+If type == 0, we will receive any msg. If there're no we will be blocked.
+If type > 0, we will receive first with this type.
+If type < 0, we will receive first with type <= abs(type).
+Use ipcs and ipcrm!!!
+_______________________________________________________________________________
+Semaphores and shared memory.
+In order to use semaphore we need to create it.
+We have semget(key, n ,flags); n - number of semaphores;
+We suppose that semaphore equals 0 after initialization.
+We have semctl(id, IPC_RMID);
+semop(id, ops, count_of_ops)
+struct seminf {
+    sem_num <- 0..4
+    sem_op <- 1, -1, 2, -5, 0 == it_waits until sem var is zero
+    sem_flg <- SEM_UNDO (operation will be undo if process dies)
+            <- IPC_NOWAIT (non_block operation)
+}
+
+[][][][] - done all or nothing!!! Atomic!!!!
+
+shmget (key, size, flgs)
+shmctl (id, IPC_RMID, NULL)
+void* shmat(id, NULL, 0)
+      shmdt(....)
+_______________________________________________________________________________
+    SIGNALS
+Signals are sended by OS, if smth is wrong as a rule. It's an alagogue
+of program interruptions.
+We register an handling of signal. On signal it will be executed.
+I. e.: writing in pipe when one end is closed. It's signal SIGPIPE.
+Handler of SIGPIPE killed process.
+Handlers are inhereted from parents.
+SIG_IGN and SIG_DEF and our own handler.
+When exec, our own handler are changed to SIG_DEF
+
+int kill (pid_t pid, int signal);
+                      ^0 <-----no signal, we just check existence of process
+                        with such pid
+if pid > 0 we send to process
+if pid < 0 we send to group
+if pid == -1 we send to ALL PROCESSES IN OS
+
+don't use syscall signal, USE sigaction!!!!
+
+int sigaction (int signum, const struct sigaction* new,
+        struct sigaction* old);
+
+struct sigaction {
+    void (*sa_handler)(int);
+}
+
+struct sigaction act = {
+    .sa_handler = handler, //or SIG_IGN or SIG_DFL
+};
+
+sigaction (SIGCHLD, &act, NULL);
+
+We can't handle SIGKILL, SIG(smth) and SIGSTOP!!!!
+int sigprocmask(int how, const sigset_t* new, sigset_t* old);
+This function takes list of signals which listed in old and does some
+operations. sigsets are bitmask. We don't know how to handle with them.
+
+sigemptyset(sigset_t);
+sigfillset(sigset_t);
+sigaddset...
+sigdelset...
+sigismember...
+
+How to prohibit every signal?
+sigfillset(&set);
+sigprocmask(SIG_BLOCK, &set, NULL);
+
+How to allow every?
+sigfillset(&set);
+sigprocmask(SIG_UNBLOCK, &set, NULL);
+
+How to recover old mask?
+sigprocmask(...., ..., &old);
+sigprocmask(SIG_SETMASK, &old, NULL);
+
+pause(); //Waits for signal to come
+int sigsuspend(sigset_t* set) //Atomically sets ...(i'm too slow)
+
+man 7 signal
+
+Signals are glued
+______________________________________________________________________________
+    I/0
+What problem to solve? Imagine: there's process which reads from one file des-
+criptor and prints to another.
+Write and read blocks usually. There's nonblock, but problem not solved;
+
+SMTH ---> F2 ---> F3
+    ^write   ^read
+
+poll/select/epoll/eselect
+
+int select(int fd_max,
+           fd_set* read,
+           fd_set* write,
+           fd_set* exc, // := NULL
+           struct timeval* timeout);
+Event is possibilty to R/W to/from filedesctiptor.
+
+fd_set is a set of filedescriptor^
+FD_CLR
+FD_SET
+FD_ZERO
+FD_ISSET
+
+select returns >0 (num of fd's) when event occurs (and data AT LEAST ONE TIME
+WE CAN READ OR WRITE).
+Kernel makes NEW SETS!!!!!
+fd_max must be (maximum fd+1)
