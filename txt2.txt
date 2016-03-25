@@ -61,3 +61,147 @@ a.out: 1.o 2.o
 -include *.d //- sign to ignore errors on the first time
 gmake/make -p
 -g16 //cores*threads*2
+_______________________________________________________________________________
+Check that Valgrind doesn't return errors.
+Don't use ? . Use if and else.
+Must be one/zero operator on one line.
+My test must cover >= 96% of code. Use gcov. Must be some flags.
+Allocate can return error because of ulimit or replacing of malloc.
+
+Use do {...} while(0)
+BUILD_BUG_ON
+We have some magic useful func:
+    void log( levlg, const char* format, ...);
+It must not have side effect.
+So we use macrodefinitions:
+#define log(level, format, ...) \
+ do \
+ {\ 
+  if (level > current_lelel)\
+  {\
+    do_log(level, format, ...);\
+  }\
+ }
+
+int f()
+{
+    static int a;
+    return ++a;
+}
+
+int main()
+{
+    printf("%d %d\n", f(), f());
+    return 0;
+}  ----> we don't know what will be printed
+
+Use -Wall -Werror
+_______________________________________________________________________________
+Some applied thing - SVC
+There's interesting program diff -up
+1.o.old 1.c
+--- 1.c.old
++++ 1.c
+@@ -347,7 +426,8 @@     void handler
+    printf("%d\n");
+    printf("%d\n");
+-   i=5;
++   i=6;
++   j=3;
+    printf(  );
+    printf(  );
+@@
+There's patch utilite to apply a difference
+The -p{NUM} deletes {NUM} folders in names
+git
+_______________________________________________________________________________
+We need to get a connetion between two computers. There's some special 
+primitive - socket - duplex FIFO.
+This is two pipes connected with one descriptor. If we talk about various 
+machines, we talk about PF_INET.
+PF_UNIX is faster but only one computer.
+Socket can be 'datagrammed' or streams.
+In order to get a connection socket that get and initialize connection, are
+initialized in different way.
+Get:
+    sk = socket(PF_INET, SOCK_STREAM,0);
+    listen(sk, 255);
+    bind(sk, sock_addr, sizeof(sock_addr));
+    sk2 = accept(sk, addr, sizeof(addr));
+    read(sk2);
+    write(sk2);
+    close(sk2);
+
+    i.e.
+    while(1) {
+        sk2 = accept(sk);
+        fork();
+    } //this is standart pattern
+Initialize:
+    sk = socket(PF_INET, SOCK_STREAM, 0);
+    connect(sk, addr, sizeof(add));
+
+struct sockaddr addr; 
+addr.sin_family = AF_INET;
+addr.sin_port = htons(4000);
+addr.sin_addr.st_addr = htonl(INADDR_ANY);
+//this must be after listen()
+
+Magic addresses:
+127.0.0.1 -> 0x7F000001
+
+=======================================UDP=====================================
+    sk = socket(RF_INET, SOCK_DGRAM,0);
+    bind();
+    revc/recvfrom/read
+
+    sk = socket();
+    1. connect
+       write
+    2. sendto
+    int x = 1;
+    setsockopt(sk, SOL_SOCKET, SO_BROADCAST, !x);
+    255.255.255.255
+The idea for our program: we have a razdatchik and workers. Worker must
+create UDP socket and wait on it. Razdatchik must send UDP-message to all
+workers(make broadcast). Workers say: I'm here. So razdatchik knows all IP's of
+workers and can send tasks.
+
+_______________________________________________________________________________
+How to debug this thing?
+We must sniff the packets.
+tcpdump
+wireshark
+We have payload, TCP header, IP header, Ethernet header etc.
+In Ethernet header we have address of sender's and receiver's cards (local).
+MAC SRC and MAC DST. IP, MAC.
+In kernel we have two thins: (route table) and (ARP cache)==(Linking MAC to IP
+    addresses).
+Route table tells us where send to (only next one, not the end).
+We can see route table in `ip rout list` or `ip r l`. 
+We can add route by two ways - ip r a 192.168.1.0/24 dev eth 0
+or - gv 192.168.1.1
+ip route get
+
+192.168.2.1 &
+255.255.224.0
+192.168.0.0 - the IP of our network
+
+192.168.0.0/20 <- the 20 1s in the beginning of mask
+arp -n
+
+What we have more on IP level?
+In IP header we have IP SRC and IP DST, CRC [of IP header only, because of
+    performance], TTL [time to live], frag, proto [TCP or UDP]
+
+In TCP header: SRC PORT, DST PORT. In real world in TCP mustn't be
+    IP fragmentation. TCP delivers semantics of two pipes - reliable
+    connetion. CRC of all packet and TCP header. We numerate bytes, so
+    we have two numbers: len and seq (the order of 1st byte in packet).
+    We must ACK (acknowledgment, the data that I received). And flags.
+    Flags: SYN, FIN, RST, ACK;
+    And retransmit count;
+
+How to create connection? Send packet with SYN. In answer SYN, ACK; Then: ACK;
+To destroy: -->FIN, <-- ACK, <-- FIN, --> ACK.
+

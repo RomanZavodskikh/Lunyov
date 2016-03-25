@@ -2,6 +2,12 @@
 #define SYSCALL_ERR_H
 
 #include <stdlib.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <sys/ioctl.h>
+#include <signal.h>
+#include <stdio.h>
+#include <pthread.h>
 
 int fcntl_err(int fd, int cmd, int arg)
 {
@@ -123,5 +129,45 @@ int sigaction_err(int signum, const struct sigaction* act,
         perror("sigaction");
         exit(EXIT_FAILURE);
     }
+    return rtr_val;
+}
+
+unsigned long int strtoul_err(const char* nptr, char** endptr, int base)
+{
+    char* endptr_tmp = NULL;
+    unsigned long int rtr_val = strtoul(nptr, &endptr_tmp, base);
+    if (*nptr != '\0' && *endptr_tmp == '\0')
+    {
+        return rtr_val;
+    }
+    else
+    {
+        perror("strtoul");
+        exit(EXIT_FAILURE);
+    }
+}
+
+int pthread_create_err(pthread_t* thread, const pthread_attr_t* attr, 
+    void*(*start_routine)(void*), void* arg)
+{
+    int rtr_val = pthread_create(thread, attr, start_routine, arg);
+    if (rtr_val != 0)
+    {
+        perror("pthread_create");
+        exit(EXIT_FAILURE);
+    }
+    return rtr_val;
+}
+
+int pthread_join_err(pthread_t thread, void** retval)
+{
+    int rtr_val = pthread_join(thread, retval);
+    if (rtr_val != 0)
+    {
+        perror("pthread_join");
+        exit(EXIT_FAILURE);
+    }
+    return rtr_val;
 }
 #endif //SYSCALL_ERR_H
+
