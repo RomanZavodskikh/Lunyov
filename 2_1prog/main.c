@@ -39,7 +39,7 @@ eoc2:
     }
 
     //testing all the rest node funcs
-    for (int i = 0; i < 1000; ++i)
+    for (int i = 0; i < 500; ++i)
     {
         printf("==========================================================\n");
         struct Node* node_p = node_ctor(30, less);
@@ -106,7 +106,7 @@ eoc2:
     }
 
     //testing the ordered set itself
-    for (int i = 0; i < 1000; ++i)
+    for (int i = 0; i < 500; ++i)
     {
         printf("==========================================================\n");
 

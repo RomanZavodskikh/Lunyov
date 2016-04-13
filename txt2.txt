@@ -204,4 +204,19 @@ In TCP header: SRC PORT, DST PORT. In real world in TCP mustn't be
 
 How to create connection? Send packet with SYN. In answer SYN, ACK; Then: ACK;
 To destroy: -->FIN, <-- ACK, <-- FIN, --> ACK.
+_______________________________________________________________________________
+Why is it reliable?
+How to resend data? We write usual terminal. In order to right work of system
+we need to send symbol at once. But send header on every symbol is expensive.
+Simple thing: Nagle algorithm. If I have no packets to send I can send just 1
+symbol. After this we wait ~100 ms or accept from server.
+The right size of payload is needed. There's special interface PNTU discovery.
+When we send SYN packet all routes refresh field (max size of packet).
+So we escape IP fragmentation.
+When to resend packet? Timeouts grows with exponent. We need ~260 Mbit buffer
+to send data to Moon. 
+On hardware we can count checksums. 
+Latch Receive Offload.
+Interrupts not on every packet.
+One processor can get just 6Gib/s. So we must give job to every core.
 
