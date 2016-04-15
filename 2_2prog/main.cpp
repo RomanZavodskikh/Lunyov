@@ -7,8 +7,6 @@
 #include <boost/numeric/ublas/matrix.hpp>
 #include <boost/numeric/ublas/io.hpp>
 
-const unsigned long M_SIZE = 9;
-
 using namespace std;
 using namespace boost::numeric::ublas;
  
@@ -97,45 +95,24 @@ int main(int argc, char** argv)
         (unsigned long)std::thread::hardware_concurrency());
     std::vector<pthread_t> threads_v(num_of_cpus);
 
-    unsigned long m_size = M_SIZE;
+    std::ifstream matrix_file;
+    matrix_file.open("matrix2.txt");
+    unsigned long m_size = 0;
+    matrix_file >> m_size;
     matrix<T> matrix(m_size, m_size);
-
-    /*
-    const double elems[M_SIZE][M_SIZE]= {
-    {  4,  1,  0,  1,  4,  9,  8,  9,  1},
-    { 39, 13,  1,  4,  4,  9,  1,  1,  2},
-    {  8,  2,  1,  4,  3, 99, 42, 43,  0},
-    { 79, 64,  9,  2,  0, 24,  1, 83, 12},
-    {  8,  4,  5, 43,  1,  1,  1, 21,  3},
-    { 48,  9,  0,  0,  0,  0,  0, 42,  3},
-    {  8,  9,  0, 14,  1,  3,  0,  8,  3},
-    {  1, 23, 42, 52, 42, 42,  3,  4,  1},
-    {  1,  1,  1,  3, 52,  1,  1,  2,  0} };
-    */
-
-    const double elems[M_SIZE][M_SIZE]= {
-    {  0,  1,  0,  1,  4,  9,  8,  9,  1},
-    { 39,  0,  1,  4,  4,  9,  1,  1,  2},
-    {  8,  2,  0,  4,  3, 99, 42, 43,  0},
-    { 79, 64,  9,  2,  0, 24,  1, 83, 12},
-    {  8,  4,  5, 43,  1,  1,  1, 21,  3},
-    { 48,  9,  0,  0,  0,  0,  0, 42,  3},
-    {  8,  9,  0, 14,  1,  3,  0,  8,  3},
-    {  1, 23, 42, 52, 42, 42,  3,  4,  1},
-    {  1,  1,  1,  3, 52,  1,  1,  2,  0} };
 
     for (unsigned long i = 0; i < m_size; ++i)
     {
         for (unsigned long j = 0; j < m_size; ++j)
         {
-            matrix(i,j) = elems[i][j];
+            matrix_file >> matrix(i,j);
         }
     }
-    cout << matrix << endl;
 
     Data* data = new Data[num_of_cpus];
     pthread_mutex_t swap_mutex;
     pthread_mutex_init(&swap_mutex, nullptr);
+
     for (unsigned long i = 0; i < num_of_cpus; ++i)
     {
         data[i].matrix_p = &matrix;
@@ -155,15 +132,13 @@ int main(int argc, char** argv)
             pthread_join_err(threads_v[j], nullptr);
         }
     }
-    pthread_mutex_destroy(&swap_mutex);
-    cout << matrix << endl;
 
     double det = 1;
     for (unsigned long i = 0; i < m_size; ++i)
     {
         det *= matrix(i,i);
     }
-    cout << fixed << det << endl;
+    cout << det << endl;
 
     return 0;
 }

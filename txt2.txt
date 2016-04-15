@@ -220,3 +220,17 @@ Latch Receive Offload.
 Interrupts not on every packet.
 One processor can get just 6Gib/s. So we must give job to every core.
 
+_______________________________________________________________________________
+About ill.
+We have some problems with disk:
+1.We can do just 100-150 writes/sec
+2.When we write we write not only data but metadata.
+We can turn off page cache with O_DIRECT
+On SSD we cannot use all stream (>=500 MByte/s) with one thread.
+So we must write in it with several stream.
+So we cannot use write, we use pwrite. Or pwritev(not in MacOS).
+We have libio. We start IO operation in our context. This works only with
+O_DIRECT.
+We have EVENT_FD. We have 64-bit value. When it's 0, we block until it won't
+be 0. It (libio) has two syscalls - submit and getevents.
+

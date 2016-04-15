@@ -5,4 +5,5 @@ all:
 	$(CXX) $(CXXFLAGS) main.cpp $(LFLAGS)
 
 clean:
-	-rm a.out
+	-rm a.out zrk* matrix*.txt
+	-rm -rf __pyca* 
