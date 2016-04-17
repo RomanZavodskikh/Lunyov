@@ -1,4 +1,4 @@
-CXXFLAGS=-std=c++11 -Wall -Wpedantic -Werror -g
+CXXFLAGS=-std=c++11 -O0 -Wall -Wpedantic -Werror -g
 LFLAGS=-lpthread
 
 all:

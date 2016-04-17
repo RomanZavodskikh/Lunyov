@@ -1,6 +1,6 @@
 #!/bin/bash
 PREFIX=zrk
-for i in `seq $1`
+for i in `seq 2 $1`
 do
     ./a.out $2 > ${PREFIX}$i 
     diff ${PREFIX}$i ${PREFIX}1
