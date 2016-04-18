@@ -19,9 +19,7 @@ struct Data
     unsigned long num_of_cpus;
     unsigned long cur_cpu;
     pthread_mutex_t* swap_mutex_p;
-    pthread_mutex_t* cond_mutex_p;
     pthread_mutex_t* cond2_mutex_p;
-    pthread_cond_t* cv_p;
     pthread_cond_t* cv2_p;
     unsigned long* substracted_times;
     unsigned long* has_zeros;
@@ -63,9 +61,7 @@ void one_step(void* data)
     Data* const data_p = (Data*) data;
     matrix<T>* const m_p = data_p->matrix_p;
     unsigned long const str_num = data_p->str_num;
-    pthread_mutex_t* const cv_mutex_p = data_p->cond_mutex_p;
     pthread_mutex_t* const cv2_mutex_p = data_p->cond2_mutex_p;
-    pthread_cond_t* const cv_p = data_p->cv_p;
     pthread_cond_t* const cv2_p = data_p->cv2_p;
 
     //we swap string if cur diagonal elem is 0
@@ -84,13 +80,6 @@ void one_step(void* data)
 
     for (unsigned long i = str_num+1; i < m_p->size1(); i++)
     {
-        pthread_mutex_lock(cv_mutex_p);
-        while (data_p->substracted_times[str_num] != str_num)
-        {
-            pthread_cond_wait(&cv_p[str_num], cv_mutex_p);
-        }
-        pthread_mutex_unlock(cv_mutex_p);
-
         pthread_mutex_lock(cv2_mutex_p);
         while (data_p->has_zeros[i] < str_num)
         {
@@ -110,14 +99,6 @@ void one_step(void* data)
         data_p->has_zeros[i]++;
         pthread_cond_broadcast(&cv2_p[i]);
         pthread_mutex_unlock(cv2_mutex_p);
-
-        pthread_mutex_lock(cv_mutex_p);
-        data_p->substracted_times[i]++;
-        if (data_p->substracted_times[i] == i)
-        {
-            pthread_cond_broadcast(&cv_p[i]);
-        }
-        pthread_mutex_unlock(cv_mutex_p);
     }
 }
 
@@ -191,15 +172,8 @@ int main(int argc, char** argv)
     //initializing the swap and cond mutexes (need for Gauss algorithm)
     pthread_mutex_t swap_mutex;
     pthread_mutex_init(&swap_mutex, nullptr);
-    pthread_mutex_t cond_mutex;
-    pthread_mutex_init(&cond_mutex, nullptr);
     pthread_mutex_t cond2_mutex;
     pthread_mutex_init(&cond2_mutex, nullptr);
-    pthread_cond_t* cvs = new pthread_cond_t[m_size];
-    for (unsigned long i = 0; i < m_size; ++i)
-    {
-        pthread_cond_init(&cvs[i], nullptr);
-    }
     pthread_cond_t* cvs2 = new pthread_cond_t[m_size];
     for (unsigned long i = 0; i < m_size; ++i)
     {
@@ -222,9 +196,7 @@ int main(int argc, char** argv)
         data[i].matrix_p = &matrix;
         data[i].num_of_cpus = num_of_cpus;
         data[i].swap_mutex_p = &swap_mutex;
-        data[i].cond_mutex_p = &cond_mutex;
         data[i].cond2_mutex_p = &cond2_mutex;
-        data[i].cv_p = cvs;
         data[i].str_num = 0;
         data[i].substracted_times =  substracted_times;
         data[i].cur_cpu = i;
