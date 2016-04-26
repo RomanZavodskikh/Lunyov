@@ -6,7 +6,7 @@ import math
 
 random.seed()
 
-SIZE=500
+SIZE=1500
 a=[]
 for i in range(SIZE):
     b=[]

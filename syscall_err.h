@@ -169,5 +169,72 @@ int pthread_join_err(pthread_t thread, void** retval)
     }
     return rtr_val;
 }
+
+int pthread_mutex_lock_err(pthread_mutex_t* mutex)
+{
+    int rtr_val = pthread_mutex_lock(mutex);
+    if (rtr_val != 0)
+    {
+        perror("pthread_mutex_lock");
+        exit(EXIT_FAILURE);
+    }
+    return rtr_val;
+}
+
+int pthread_mutex_unlock_err(pthread_mutex_t* mutex)
+{
+    int rtr_val = pthread_mutex_unlock(mutex);
+    if (rtr_val != 0)
+    {
+        perror("pthread_mutex_unlock");
+        exit(EXIT_FAILURE);
+    }
+    return rtr_val;
+}
+
+int pthread_cond_broadcast_err(pthread_cond_t* cond)
+{
+    int rtr_val = pthread_cond_broadcast(cond);
+    if (rtr_val != 0)
+    {
+        perror("pthread_cond_broadcast");
+        exit(EXIT_FAILURE);
+    }
+    return rtr_val;
+}
+
+int pthread_mutex_init_err(pthread_mutex_t* mutex, const pthread_mutexattr_t*
+    attr)
+{
+    int rtr_val = pthread_mutex_init(mutex, attr);
+    if (rtr_val != 0)
+    {
+        perror("pthread_mutex_init");
+        exit(EXIT_FAILURE);
+    }
+    return rtr_val;
+}
+
+int pthread_cond_init_err(pthread_cond_t* cond, const pthread_condattr_t* attr)
+{
+    int rtr_val = pthread_cond_init(cond, attr);
+    if (rtr_val != 0)
+    {
+        perror("pthread_cond_init");
+        exit(EXIT_FAILURE);
+    }
+    return rtr_val;
+}
+
+void* calloc_err (size_t nmemb, size_t size)
+{
+    void* rtr_val = calloc(nmemb, size);
+    if (rtr_val == NULL)
+    {
+        perror("calloc");
+        exit(EXIT_FAILURE);
+    }
+    return rtr_val;
+}
 #endif //SYSCALL_ERR_H
 

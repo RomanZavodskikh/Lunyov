@@ -17,4 +17,9 @@ void* calloc_bad(size_t nmemb, size_t size)
     }
 }
 
+void* memcpy_bad(void* dest, const void* src, size_t n)
+{
+    return NULL;
+}
+
 #endif //BAD_FUNCS_H
