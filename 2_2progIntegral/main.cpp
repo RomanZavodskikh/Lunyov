@@ -59,10 +59,14 @@ void* add_integral(void* args)
     T* const sum_p = ((Data*)args)->sum_p;
     T (*foo)(T) = ((Data*)args)->foo;
 
+    T sum = 0;
+
     for (T x = left; x < right; x+=STEP)
     {
-        *sum_p += sin(x)*STEP;
+        sum += sin(x)*STEP;
     }
+
+    *sum_p = sum;
 
     return nullptr;
 }
