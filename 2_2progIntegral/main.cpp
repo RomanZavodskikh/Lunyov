@@ -4,9 +4,12 @@
 #include <sys/sysinfo.h>
 #include <pthread.h>
 
+#include "../syscall_err.h"
+
 using namespace std;
 
 typedef double T;
+typedef T(*F_P)(T);
 
 T const STEP = 0.000001;
 T const LEFT = 0.0;
@@ -27,17 +30,25 @@ T func (T x)
     return sin(x);
 }
 
-void init_args(Data* args, unsigned long const num_of_cpus, T* const sum_p)
+void init_args(Data* const args, unsigned long const num_of_cpus)
 {
     T const delta = RIGHT - LEFT;
     for (unsigned long i = 0; i < num_of_cpus; ++i)
     {
         args[i].left = LEFT + i*delta/num_of_cpus;
         args[i].right = LEFT + (i+1)*delta/num_of_cpus;
-        args[i].sum_p = &sum_p[i];
+        args[i].sum_p = new T;
         args[i].foo = func;
         args[i].num_of_cpus = num_of_cpus;
         args[i].cur_cpu = i;
+    }
+}
+
+void deinit_args(Data* const args, unsigned long const num_of_cpus)
+{
+    for (unsigned long i = 0; i < num_of_cpus; ++i)
+    {
+        delete args[i].sum_p;
     }
 }
 
@@ -50,18 +61,18 @@ void* add_integral(void* args)
 
     for (T x = left; x < right; x+=STEP)
     {
-        *sum_p += foo(x)*STEP;
+        *sum_p += sin(x)*STEP;
     }
 
     return nullptr;
 }
 
-T sum_sums(const T* const sum_p, unsigned long const num_of_cpus)
+T sum_sums(const Data* const args, unsigned long const num_of_cpus)
 {
     T rtr_val = 0;
     for (unsigned long i = 0; i < num_of_cpus; ++i)
     {
-        rtr_val += sum_p[i];
+        rtr_val += *(args[i].sum_p);
     }
     return rtr_val;
 }
@@ -73,29 +84,30 @@ int main(int argc, char** argv)
         cerr << "Usage: ./a.out NUM_OF_CPUS" << endl;
         exit(EXIT_FAILURE);
     }
-    unsigned long num_of_cpus = strtoul(argv[1], nullptr, 10);
+    unsigned long num_of_cpus = strtoul_err(argv[1], nullptr, 10);
     num_of_cpus = min(num_of_cpus, (long unsigned)get_nprocs());
 
-    T* sum_p = new T[num_of_cpus];
     pthread_t* threads = new pthread_t[num_of_cpus];
     Data* args = new Data[num_of_cpus];
 
-    init_args(args, num_of_cpus, sum_p);
+    init_args(args, num_of_cpus);
 
     for (unsigned long i = 0; i < num_of_cpus; ++i)
     {
-        pthread_create(&threads[i], nullptr, add_integral, &args[i]); 
+        pthread_create_err(&threads[i], nullptr, add_integral, &args[i]); 
     }
     for (unsigned long i = 0; i < num_of_cpus; ++i)
     {
-        pthread_join(threads[i], nullptr);
+        pthread_join_err(threads[i], nullptr);
     }
 
-    cout << sum_sums(sum_p, num_of_cpus) << endl;
+    T const sum = sum_sums(args, num_of_cpus);
+    cout << sum << endl;
+
+    deinit_args(args, num_of_cpus);
 
     delete [] args;
     delete [] threads;
-    delete sum_p;
 
     return 0;
 }
