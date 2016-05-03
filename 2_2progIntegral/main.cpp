@@ -11,23 +11,22 @@ using namespace std;
 typedef double T;
 typedef T(*F_P)(T);
 
-T const STEP = 0.000001;
+unsigned long const NUM_OF_INTERVALS = 589824000L;
 T const LEFT = 0.0;
-T const RIGHT = 67.0;
+T const RIGHT = 500.0;
 
 struct Data
 {
     T left;
     T right;
     T* sum_p;
-    T (*foo)(T);
     unsigned long num_of_cpus;
     unsigned long cur_cpu;
 };
 
 T func (T x)
 {
-    return sin(x);
+    return abs(sin(x));
 }
 
 void init_args(Data* const args, unsigned long const num_of_cpus)
@@ -38,7 +37,6 @@ void init_args(Data* const args, unsigned long const num_of_cpus)
         args[i].left = LEFT + i*delta/num_of_cpus;
         args[i].right = LEFT + (i+1)*delta/num_of_cpus;
         args[i].sum_p = new T;
-        args[i].foo = func;
         args[i].num_of_cpus = num_of_cpus;
         args[i].cur_cpu = i;
     }
@@ -57,16 +55,19 @@ void* add_integral(void* args)
     T const left = ((Data*)args)->left;
     T const right = ((Data*)args)->right;
     T* const sum_p = ((Data*)args)->sum_p;
-    T (*foo)(T) = ((Data*)args)->foo;
+    unsigned long const cur_cpu = ((Data*)args)->cur_cpu;
+    unsigned long const num_of_cpus = ((Data*)args)->num_of_cpus;
+    unsigned long const iters = NUM_OF_INTERVALS / num_of_cpus;
+    T const step = (right-left)/iters;
 
     T sum = 0;
 
-    for (T x = left; x < right; x+=STEP)
+    for (unsigned long i = 0; i < iters; ++i)
     {
-        sum += sin(x)*STEP;
+        sum += func(left+i*step);
     }
 
-    *sum_p = sum;
+    *sum_p = sum*step;
 
     return nullptr;
 }

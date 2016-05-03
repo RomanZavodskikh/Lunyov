@@ -233,4 +233,8 @@ We have libio. We start IO operation in our context. This works only with
 O_DIRECT.
 We have EVENT_FD. We have 64-bit value. When it's 0, we block until it won't
 be 0. It (libio) has two syscalls - submit and getevents.
+_______________________________________________________________________________
+About memory.
+We need to free memory.
+There's a out-of-memory killer.
 
