@@ -1,4 +1,4 @@
-CXXFLAGS=-std=c++11 -O0 -g
+CXXFLAGS=-O0 -g
 LFLAGS=-pthread
 
 all:
