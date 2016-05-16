@@ -1,4 +1,4 @@
-CFLAGS=-std=c99
+CFLAGS=-std=gnu99 -g -Werror -Wall
 LFLAGS=-lm
 
 all: main.c
