@@ -69,6 +69,17 @@ int fd_empty(fd_set* fds, int max_fd)
     return 1;
 }
 
+void set_socket_keep_alive(int sockfd)
+{
+    int yes = 1;
+    if ( setsockopt(sockfd, SOL_SOCKET, SO_KEEPALIVE, &yes, sizeof(yes))
+        == -1)
+    {
+        perror("\tsetsockopt");
+        exit(1);
+    }
+}
+
 void set_socket_reuse(int sockfd)
 {
     int yes = 1;
@@ -194,6 +205,7 @@ void server(int argc, char** argv)
         }
 
         set_socket_reuse(sockfd);
+        set_socket_keep_alive(sockfd);
         
         if ( bind(sockfd, p->ai_addr, p->ai_addrlen) == -1)
         {
@@ -396,6 +408,7 @@ void client(int argc, char** argv)
         }
 
         set_socket_reuse(sockfd);
+        set_socket_keep_alive(sockfd);
 
         if ( (connect(sockfd, p->ai_addr, p->ai_addrlen)) == -1)
         {
