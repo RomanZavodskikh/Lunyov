@@ -33,6 +33,18 @@ T func (T x)
     return fabs(sin(x));
 }
 
+int fd_empty(fd_set* fds, int max_fd)
+{
+    for (int i = 0; i < max_fd+1; ++i)
+    {
+        if (FD_ISSET(i, fds))
+        {
+            return 0;
+        }
+    }
+    return 1;
+}
+
 void set_socket_reuse(int sockfd)
 {
     int yes = 1;
@@ -157,6 +169,8 @@ void server(int argc, char** argv)
             perror("server: socket");
             continue;
         }
+
+        set_socket_reuse(sockfd);
         
         if ( bind(sockfd, p->ai_addr, p->ai_addrlen) == -1)
         {
@@ -231,23 +245,54 @@ void server(int argc, char** argv)
             jobs[i].right, jobs[i].intervals);
     }
 
+    fd_set not_readen;
+    fd_set to_check;
+    FD_ZERO(&not_readen);
+    FD_ZERO(&to_check);
+    int max_fd = 0;
     for (unsigned long i = 0; i < max_slaves; ++i)
     {
-        int numbytes = 0;
+        FD_SET(sockfds2[i], &not_readen);
+        FD_SET(sockfds2[i], &to_check);
 
-        if ( (numbytes = recv(sockfds2[i], &jobs[i],
-            sizeof(jobs[i]), 0)) == -1)
+        if (sockfds2[i] > max_fd)
         {
-            perror("server: recv");
+            max_fd = sockfds2[i];
+        }
+    }
+
+    while ( !fd_empty(&to_check, max_fd) ) 
+    {
+        if ( select(max_fd+1, &to_check, NULL, NULL, NULL) == -1)
+        {
+            perror("server: select");
             exit(1);
         }
-        if ( numbytes == 0 )
+
+        for (unsigned long i = 0; i < max_slaves; ++i)
         {
-            perror("server: connection cutted");
-            exit(1);
+            if ( FD_ISSET(sockfds2[i], &to_check) )
+            {
+                int numbytes = 0;
+
+                if ( (numbytes = recv(sockfds2[i], &jobs[i],
+                    sizeof(jobs[i]), 0)) == -1)
+                {
+                    perror("server: recv");
+                    exit(1);
+                }
+                if ( numbytes == 0 )
+                {
+                    fprintf(stderr, "server: connection cutted\n");
+                    exit(1);
+                }
+
+                FD_CLR(sockfds2[i], &not_readen);
+                printf ("server: Received sum == %lg\n", jobs[i].sum);
+            }
         }
 
-        printf ("server: Received sum == %lg\n", jobs[i].sum);
+        to_check = not_readen;
     }
     free(sockfds2);
     free(jobs);
@@ -340,6 +385,8 @@ void client(int argc, char** argv)
             perror("client: socket");
             continue;
         }
+
+        set_socket_reuse(sockfd);
 
         if ( (connect(sockfd, p->ai_addr, p->ai_addrlen)) == -1)
         {
