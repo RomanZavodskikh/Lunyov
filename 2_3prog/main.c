@@ -13,12 +13,12 @@
 
 #define LISTEN_BACKLOG 255
 #define PORT "25123"
-#define MSG_SLAVE "I am a slave!!!"
+#define MSG_BOSS "I am a boss"
 
 typedef double T;
 T const LEFT = 0.0;
 T const RIGHT = 500.0;
-unsigned long const NUM_OF_INTERVALS = 100000000L;
+unsigned long const NUM_OF_INTERVALS = 1000000000L;
 
 struct Data
 {
@@ -31,6 +31,28 @@ struct Data
 T func (T x)
 {
     return fabs(sin(x));
+}
+
+void set_socket_reuse(int sockfd)
+{
+    int yes = 1;
+    if ( setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes))
+        == -1)
+    {
+        perror("\tsetsockopt");
+        exit(1);
+    }
+}
+
+void set_socket_broadcast(int sockfd)
+{
+    int yes = 1;
+    if ( setsockopt(sockfd, SOL_SOCKET, SO_BROADCAST, &yes, sizeof(yes))
+        == -1)
+    {
+        perror("\tsetsockopt");
+        exit(1);
+    }
 }
 
 void* get_in_addr(struct sockaddr* sa)
@@ -62,12 +84,20 @@ void print_ip(struct addrinfo* p)
     }
 
     inet_ntop(p->ai_family, addr, ipstr, sizeof(ipstr));
-    printf("    %s: %s, protocal: %i\n", ipver, ipstr, p->ai_protocol);
+    printf("    %s: %s, protocol: %i\n", ipver, ipstr, p->ai_protocol);
 }
 
-void job_giver_work()
+void server(int argc, char** argv)
 {
-    struct addrinfo hints, *servinfo, *p;
+    char* endptr;
+    unsigned long const max_slaves = strtoul(argv[2], &endptr, 10);
+    if ( *endptr != '\0')
+    {
+        perror("server: strtoul");
+        exit(1);
+    }
+
+    struct addrinfo hints, *servinfo_udp, *p_udp;
 
     memset(&hints, 0, sizeof(hints));
     hints.ai_family = AF_INET;
@@ -75,81 +105,42 @@ void job_giver_work()
     hints.ai_flags = AI_PASSIVE;
 
     int rv;
-    if ( (rv = getaddrinfo(NULL, PORT, &hints, &servinfo)) != 0 )
+    if ( (rv = getaddrinfo("255.255.255.255", PORT, &hints,
+        &servinfo_udp)) != 0 )
     {
         fprintf(stderr, "server: getaddrinfo %s\n", gai_strerror(rv));
         exit(1);
     }
 
-    int sockfd;
-    for (p = servinfo; p != NULL; p = p->ai_next)
+    int sockfd_udp;
+    for (p_udp = servinfo_udp; p_udp != NULL; p_udp = p_udp->ai_next)
     {
-        if ( (sockfd = socket(p->ai_family, p->ai_socktype, p->ai_protocol))
-                == -1 )
+        if ( (sockfd_udp = socket(p_udp->ai_family, p_udp->ai_socktype,
+            p_udp->ai_protocol)) == -1 )
         {
             perror("server: socket");
             continue;
         }
 
-        if ( (bind(sockfd, p->ai_addr, p->ai_addrlen)) == -1)
-        {
-            perror("server: bind");
-            close(sockfd);
-            continue;
-        }
+        set_socket_reuse(sockfd_udp);
+        set_socket_broadcast(sockfd_udp);
 
-        print_ip(p);
+        print_ip(p_udp);
 
         break;
     }
 
-    freeaddrinfo(servinfo);
-    servinfo = NULL;
-
-    if (p == NULL)
+    if (p_udp == NULL)
     {
-        fprintf(stderr, "server: failed to bind\n");
+        fprintf(stderr, "server: failed to create socket\n");
         exit(1);
     }
 
-    int optval = 1;
-    if ( setsockopt(sockfd, SOL_SOCKET, SO_BROADCAST, &optval, 
-        sizeof(optval)) == -1)
-    {
-        perror("server: setsockopt");
-        exit(1);
-    }
-
-    printf("server: waiting for connections...\n");
-
-    int received = 1;
-    struct sockaddr_storage addr;
-    socklen_t addrlen;
-
-    {
-        char buf[100];
-        printf("\trecvfrom args:\n");
-        printf("\tsockfd %i\n", sockfd);
-        printf("\tbuf %p\n", buf);
-        printf("\tsizeof(buf) %li\n", sizeof(buf));
-        printf("\t0\n");
-        printf("\t(struct sockaddr*)&addr %p\n", (struct sockaddr*)&addr);
-        printf("\t&addrlen %p\n", &addrlen);
-        
-        if ( (received = recvfrom(sockfd, buf, sizeof(buf), 0,
-            (struct sockaddr*)&addr, &addrlen)) == -1)
-        {
-            perror("server: recvfrom");
-            exit(1);
-        }
-
-        printf("server: Received '%s'!\n", buf);
-    }
-
+    struct addrinfo *p, *servinfo;
     memset(&hints, 0, sizeof(hints));
     hints.ai_family = AF_INET;
     hints.ai_socktype = SOCK_STREAM;
-    hints.ai_addr = (struct sockaddr*)&addr;
+    hints.ai_flags = AI_PASSIVE;
 
     if ( (rv = getaddrinfo(NULL, PORT, &hints, &servinfo)) == -1)
     {
@@ -157,6 +148,7 @@ void job_giver_work()
         exit(1);
     }
 
+    int sockfd;
     for (p = servinfo; p != NULL; p = p->ai_next)
     {
         if ( (sockfd = socket(p->ai_family, 
@@ -196,18 +188,31 @@ void job_giver_work()
     
     printf("server: listen completed\n");
 
-    int sockfd2 = 0;
+    if ( sendto(sockfd_udp, MSG_BOSS, strlen(MSG_BOSS)+1, 0,
+        p_udp->ai_addr, p_udp->ai_addrlen) == -1)
+    {
+        perror("server: sendto");
+        exit(1);
+    }
+
+    freeaddrinfo(servinfo_udp);
+    servinfo_udp = NULL;
+
+    printf("server: sended broadcast '%s'\n", MSG_BOSS);
+
+    int* sockfds2 = calloc(max_slaves, sizeof(*sockfds2));
+    struct Data* jobs = calloc(max_slaves, sizeof(*jobs));
     struct sockaddr_storage their_addr;
     socklen_t their_size = 0;
+    for (unsigned long i = 0; i < max_slaves; ++i)
     {
-        struct Data job;
-        job.left = LEFT;
-        job.right = RIGHT;
-        job.sum = 0;
-        job.intervals = NUM_OF_INTERVALS;
+        jobs[i].left = LEFT + i*(RIGHT-LEFT)/max_slaves;
+        jobs[i].right = LEFT + (i+1)*(RIGHT-LEFT)/max_slaves;
+        jobs[i].sum = 0;
+        jobs[i].intervals = NUM_OF_INTERVALS/max_slaves;
 
 
-        if ( (sockfd2 = accept(sockfd, (struct sockaddr*)&their_addr,
+        if ( (sockfds2[i] = accept(sockfd, (struct sockaddr*)&their_addr,
             &their_size)) == -1)
         {
             perror("server: accept");
@@ -216,51 +221,76 @@ void job_giver_work()
 
         printf("server: accept completed\n");
         
-        if ( send(sockfd2, &job, sizeof(job), 0) == -1)
+        if ( send(sockfds2[i], &jobs[i], sizeof(jobs[i]), 0) == -1)
         {
             perror("server: send");
             exit(1);
         }
 
-        printf ("server: Sended (%lg, %lg, %li)!\n", job.left, job.right,
-            job.intervals);
+        printf ("server: Sended (%lg, %lg, %li)!\n", jobs[i].left,
+            jobs[i].right, jobs[i].intervals);
     }
 
+    for (unsigned long i = 0; i < max_slaves; ++i)
     {
-        struct Data job;
+        int numbytes = 0;
 
-        if ( recv(sockfd2, &job, sizeof(job), 0) == -1)
+        if ( (numbytes = recv(sockfds2[i], &jobs[i],
+            sizeof(jobs[i]), 0)) == -1)
         {
             perror("server: recv");
             exit(1);
         }
+        if ( numbytes == 0 )
+        {
+            perror("server: connection cutted");
+            exit(1);
+        }
 
-        printf ("server: Received sum == %lg\n", job.sum);
+        printf ("server: Received sum == %lg\n", jobs[i].sum);
     }
+    free(sockfds2);
+    free(jobs);
+
+    T sum = 0.0;
+    for (unsigned long i = 0; i < max_slaves; ++i)
+    { 
+        sum += jobs[i].sum;
+    }
+    printf("server: Integral == %lg\n", sum);
 }
 
-void job_executer_work(int argc, char** argv)
+void client(int argc, char** argv)
 {
-    struct addrinfo hints, *servinfo, *p;
-
-    memset (&hints, 0, sizeof(hints));
-    hints.ai_family = AF_UNSPEC;
+    struct addrinfo hints, *p, *servinfo;
+    memset(&hints, 0, sizeof(hints));
+    hints.ai_family = AF_INET;
     hints.ai_socktype = SOCK_DGRAM;
+    hints.ai_flags = AI_PASSIVE;
 
     int rv = 0;
-    if ((rv = getaddrinfo(argv[2], PORT, &hints, &servinfo)) != 0)
+    if ( (rv=getaddrinfo(NULL, PORT, &hints, &servinfo)) != 0)
     {
         fprintf(stderr, "client: getaddrinfo: %s\n", gai_strerror(rv));
         exit(1);
     }
 
-    int sockfd = 0;
-    for(p = servinfo; p != NULL; p = p->ai_next)
+    int sockfd;
+    for (p = servinfo; p != NULL; p = p->ai_next)
     {
-        if ((sockfd = socket(p->ai_family, p->ai_socktype,
+        if ( (sockfd=socket(p->ai_family, p->ai_socktype,
             p->ai_protocol)) == -1)
         {
             perror("client: socket");
+            continue;
+        }
+
+        set_socket_reuse(sockfd);
+
+        if ( bind(sockfd, p->ai_addr, p->ai_addrlen) == -1)
+        {
+            perror("client: bind");
+            close(sockfd);
             continue;
         }
 
@@ -270,26 +300,27 @@ void job_executer_work(int argc, char** argv)
 
     if (p == NULL)
     {
-        fprintf(stderr, "client: failed to connect\n");
-        exit(2);
-    }
-
-    char s[INET6_ADDRSTRLEN];
-    inet_ntop(p->ai_family, get_in_addr((struct sockaddr*)p->ai_addr),
-        s, sizeof(s));
-
-    freeaddrinfo(servinfo);
-    servinfo = NULL;
-    printf("client: connecting to %s\n", s);
-
-    if ( sendto(sockfd, MSG_SLAVE, sizeof(MSG_SLAVE),  
-            0, (struct sockaddr*)p->ai_addr, p->ai_addrlen) == -1)
-    {
-        perror("client: sendto");
+        fprintf(stderr, "client: failed to bind\n");
         exit(1);
     }
 
-    printf("client: Sended '%s'!\n", MSG_SLAVE);
+    freeaddrinfo(servinfo);
+    servinfo = NULL;
+
+    printf("client: binded\n");
+
+    struct sockaddr_storage sa;
+    socklen_t addrlen;
+    char buf[20];
+    
+    if ( recvfrom(sockfd, buf, sizeof(buf), 0,
+        (struct sockaddr*)&sa, &addrlen) == -1)
+    {
+        perror("client: recvfrom");
+        exit(1);
+    }
+
+    printf("client: reveived '%s'\n", buf);
 
     memset(&hints, 0, sizeof(hints));
     hints.ai_family = AF_INET;
@@ -366,16 +397,16 @@ int main(int argc, char** argv)
     setbuf(stdout, NULL);
     if (argc == 3 && !strcmp(argv[1], "server")) //Job giver
     {
-        job_giver_work();
+        server(argc, argv);
     }
-    else if (argc == 3 && !strcmp(argv[1], "client")) //Job executer
+    else if (argc == 2 && !strcmp(argv[1], "client")) //Job executer
     {
-        job_executer_work(argc, argv);
+        client(argc, argv);
     }
     else
     {
-        printf("Usage: for job    giver: %s server MAX_OF_SLAVES\n", argv[0]);
-        printf("     : for job executer: %s client BOSS_ADDR\n", argv[0]);
+        printf("Usage: for server: %s server MAX_OF_SLAVES\n", argv[0]);
+        printf("     : for client: %s client \n", argv[0]);
     }
     return 0;
 }
