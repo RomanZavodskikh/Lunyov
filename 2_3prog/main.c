@@ -359,7 +359,8 @@ void client(int argc, char** argv)
 
     printf("client: binded\n");
 
-    struct sockaddr_storage sa;
+    struct sockaddr_in sa;
+    memset(&sa, 0, sizeof(sa));
     socklen_t addrlen;
     char buf[20];
     
@@ -370,14 +371,16 @@ void client(int argc, char** argv)
         exit(1);
     }
 
-    printf("client: reveived '%s'\n", buf);
+    printf("client: received '%s'\n", buf);
 
     memset(&hints, 0, sizeof(hints));
     hints.ai_family = AF_INET;
     hints.ai_socktype = SOCK_STREAM;
-    hints.ai_addr = (struct sockaddr*)&sa;
+    char* ipstr = inet_ntoa(sa.sin_addr);
 
-    if ( (rv=getaddrinfo(NULL, PORT, &hints, &servinfo)) != 0)
+    printf("client: getting addrinfo of %s\n", ipstr);
+
+    if ( (rv=getaddrinfo(ipstr, PORT, &hints, &servinfo)) != 0)
     {
         fprintf(stderr, "client: getaddrinfo: %s\n", gai_strerror(rv));
         exit(1);
