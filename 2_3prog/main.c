@@ -361,7 +361,7 @@ void client(int argc, char** argv)
 
     struct sockaddr_in sa;
     memset(&sa, 0, sizeof(sa));
-    socklen_t addrlen;
+    socklen_t addrlen = sizeof(sa);
     char buf[20];
     
     if ( recvfrom(sockfd, buf, sizeof(buf), 0,
