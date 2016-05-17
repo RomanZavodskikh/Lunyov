@@ -138,7 +138,6 @@ void server(int argc, char** argv)
     memset(&hints, 0, sizeof(hints));
     hints.ai_family = AF_INET;
     hints.ai_socktype = SOCK_DGRAM;
-    hints.ai_flags = AI_PASSIVE;
 
     int rv;
     if ( (rv = getaddrinfo("255.255.255.255", PORT, &hints,
