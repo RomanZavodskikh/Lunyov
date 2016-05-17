@@ -375,8 +375,9 @@ void client(int argc, char** argv)
     memset(&hints, 0, sizeof(hints));
     hints.ai_family = AF_INET;
     hints.ai_socktype = SOCK_STREAM;
+    hints.ai_addr = (struct sockaddr*)&sa;
 
-    if ( (rv=getaddrinfo(argv[2], PORT, &hints, &servinfo)) != 0)
+    if ( (rv=getaddrinfo(NULL, PORT, &hints, &servinfo)) != 0)
     {
         fprintf(stderr, "client: getaddrinfo: %s\n", gai_strerror(rv));
         exit(1);
