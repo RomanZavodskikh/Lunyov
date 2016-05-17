@@ -33,6 +33,30 @@ T func (T x)
     return fabs(sin(x));
 }
 
+void receive_msg(int i, int* sockfds2, fd_set* to_check, fd_set* not_readen,
+    struct Data* jobs)
+{
+    if ( FD_ISSET(sockfds2[i], to_check) )
+    {
+        int numbytes = 0;
+
+        if ( (numbytes = recv(sockfds2[i], &jobs[i],
+            sizeof(jobs[i]), 0)) == -1)
+        {
+            perror("server: recv");
+            exit(1);
+        }
+        if ( numbytes == 0 )
+        {
+            fprintf(stderr, "server: connection cutted\n");
+            exit(1);
+        }
+
+        FD_CLR(sockfds2[i], not_readen);
+        printf ("server: Received sum == %lg\n", jobs[i].sum);
+    }
+}
+
 int fd_empty(fd_set* fds, int max_fd)
 {
     for (int i = 0; i < max_fd+1; ++i)
@@ -271,25 +295,7 @@ void server(int argc, char** argv)
 
         for (unsigned long i = 0; i < max_slaves; ++i)
         {
-            if ( FD_ISSET(sockfds2[i], &to_check) )
-            {
-                int numbytes = 0;
-
-                if ( (numbytes = recv(sockfds2[i], &jobs[i],
-                    sizeof(jobs[i]), 0)) == -1)
-                {
-                    perror("server: recv");
-                    exit(1);
-                }
-                if ( numbytes == 0 )
-                {
-                    fprintf(stderr, "server: connection cutted\n");
-                    exit(1);
-                }
-
-                FD_CLR(sockfds2[i], &not_readen);
-                printf ("server: Received sum == %lg\n", jobs[i].sum);
-            }
+            receive_msg(i, sockfds2, &to_check, &not_readen, jobs);
         }
 
         to_check = not_readen;
