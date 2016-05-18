@@ -8,6 +8,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include <netinet/tcp.h>
 #include <arpa/inet.h>
 #include <netdb.h>
 
@@ -73,6 +74,27 @@ void set_socket_keep_alive(int sockfd)
 {
     int yes = 1;
     if ( setsockopt(sockfd, SOL_SOCKET, SO_KEEPALIVE, &yes, sizeof(yes))
+        == -1)
+    {
+        perror("\tsetsockopt");
+        exit(1);
+    }
+
+    if ( setsockopt(sockfd, SOL_TCP, TCP_KEEPCNT, &yes, sizeof(yes))
+        == -1)
+    {
+        perror("\tsetsockopt");
+        exit(1);
+    }
+
+    if ( setsockopt(sockfd, SOL_TCP, TCP_KEEPIDLE, &yes, sizeof(yes))
+        == -1)
+    {
+        perror("\tsetsockopt");
+        exit(1);
+    }
+
+    if ( setsockopt(sockfd, SOL_TCP, TCP_KEEPINTVL, &yes, sizeof(yes))
         == -1)
     {
         perror("\tsetsockopt");
