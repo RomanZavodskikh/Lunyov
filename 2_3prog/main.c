@@ -80,21 +80,22 @@ void set_socket_keep_alive(int sockfd)
         exit(1);
     }
 
-    if ( setsockopt(sockfd, SOL_TCP, TCP_KEEPCNT, &yes, sizeof(yes))
+    int two = 2;
+    if ( setsockopt(sockfd, SOL_TCP, TCP_KEEPCNT, &two, sizeof(two))
         == -1)
     {
         perror("\tsetsockopt");
         exit(1);
     }
 
-    if ( setsockopt(sockfd, SOL_TCP, TCP_KEEPIDLE, &yes, sizeof(yes))
+    if ( setsockopt(sockfd, SOL_TCP, TCP_KEEPIDLE, &two, sizeof(two))
         == -1)
     {
         perror("\tsetsockopt");
         exit(1);
     }
 
-    if ( setsockopt(sockfd, SOL_TCP, TCP_KEEPINTVL, &yes, sizeof(yes))
+    if ( setsockopt(sockfd, SOL_TCP, TCP_KEEPINTVL, &two, sizeof(two))
         == -1)
     {
         perror("\tsetsockopt");
